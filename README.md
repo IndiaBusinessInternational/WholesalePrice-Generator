@@ -21,18 +21,20 @@ A single-file web app to scan supplier tax invoices / handwritten notes, apporti
 ---
 
 ## 1. Set up the Google Sheet backend (`Code.gs`)
-1. Open your IBI ERP spreadsheet → **Extensions → Apps Script**.
-2. Paste all of `Code.gs`. Save.
-3. **Deploy → New deployment → Web app**
+The script writes to **two** spreadsheets:
+- **IBI Wholesale Price Generator** sheet (primary) — full log (`WSP_Generator`) + master (`Wholesale Prices`).
+- **IBI ERP** sheet — the `Wholesale Prices` section is upserted (kept in sync).
+
+Steps:
+1. Open your **IBI Wholesale Price Generator** spreadsheet → **Extensions → Apps Script**.
+2. Paste all of `Code.gs`.
+3. At the top, set `WSP_SHEET_ID` to that spreadsheet's ID (from its URL `…/spreadsheets/d/<ID>/edit`). *If you pasted the script inside that same sheet, you may leave `WSP_SHEET_ID` blank and it will use the current sheet.* `ERP_SHEET_ID` is already set to your ERP.
+4. Save → **Deploy → New deployment → Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**
-4. Copy the `…/exec` URL.
+5. Copy the `…/exec` URL.
 
-It auto-creates two tabs on first save:
-- **WSP_Generator** — full append-only log of every entry.
-- **Wholesale Prices** — master table the ERP reads (latest WSP per product, upserted by Description + HSN). If your ERP's Wholesale Price section reads a differently-named tab, change `MASTER_TAB` at the top of `Code.gs`.
-
-The sheet ID is already set to your ERP: `1Iz5sl_-ZBgW4WmIp20vaBzkxqciZVshkedjKZxV_LaI`.
+Tabs auto-create on first save. Use **Test Sheet Connection** in the app's Settings — it now reports both target sheet names so you can confirm the WSP Generator sheet is wired up.
 
 ## 2. Get a Gemini API key (for invoice reading)
 Free key from **https://aistudio.google.com/apikey**. The app calls Gemini directly from your browser; the key is stored only on your device.
