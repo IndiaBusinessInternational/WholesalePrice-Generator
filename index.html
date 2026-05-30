@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IBI Wholesale Price Generator</title>
+
+<!-- Favicon: IBI text, #00c5ff on black -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23000000'/%3E%3Ctext x='32' y='43' font-family='Roboto,Arial,sans-serif' font-size='26' font-weight='700' fill='%2300c5ff' text-anchor='middle'%3EIBI%3C/text%3E%3C/svg%3E" />
+
+<!-- Roboto -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<!-- Cropper.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+<!-- PDF.js (preview only; extraction uses the raw PDF bytes even if this fails to load) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+  :root{
+    --cyan:#00c5ff;
+    --cyan-2:#29ABE2;
+    --radius:14px;
+    --shadow:0 10px 30px rgba(0,0,0,.18);
+    --maxw:1080px;
+  }
+  /* DARK (default) */
+  html[data-theme="dark"]{
+    --bg:#0a0a0a; --bg-2:#121315; --card:#16181b; --card-2:#1d2024;
+    --text:#f2f4f7; --muted:#9aa3ad; --border:#2a2e33; --input:#0f1113;
+    --header-bg:#000000; --th:#1b1d20;
+  }
+  /* LIGHT */
+  html[data-theme="light"]{
+    --bg:#f4f6f9; --bg-2:#eef1f5; --card:#ffffff; --card-2:#f7f9fc;
+    --text:#10141a; --muted:#5b6470; --border:#dde3ea; --input:#ffffff;
+    --header-bg:#000000; --th:#eef3f8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Roboto',Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    transition:background .25s ease,color .25s ease;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:16px;}
+
+  /* Top utility bar */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;margin-bottom:14px;flex-wrap:wrap;
+  }
+  .version{
+    font-weight:700;font-size:13px;letter-spacing:.5px;
+    color:var(--cyan);background:#000;border:1px solid var(--cyan);
+    padding:5px 12px;border-radius:999px;white-space:nowrap;
+  }
+  .toggle{
+    display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;
+    background:var(--card);border:1px solid var(--border);padding:6px 12px;border-radius:999px;
+    font-size:13px;font-weight:500;color:var(--muted);
+  }
+  .switch{width:42px;height:22px;border-radius:999px;background:var(--border);position:relative;transition:.25s;}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.25s;}
+  html[data-theme="dark"] .switch{background:var(--cyan);}
+  html[data-theme="dark"] .switch::after{left:22px;}
+
+  /* Logo banner (always on black to keep brand identity) */
+  .logo-banner{
+    background:#000;border-radius:var(--radius);
+    padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;gap:22px;
+    box-shadow:var(--shadow);
+  }
+  .logo-grid{flex:0 0 auto}
+  .logo-grid svg{display:block;height:86px;width:auto}
+  .logo-divider{width:3px;align-self:stretch;background:var(--cyan);border-radius:3px;min-height:74px}
+  .logo-text{display:flex;flex-direction:column;justify-content:center}
+  .logo-text .name{font-weight:900;color:var(--cyan);font-size:26px;line-height:1.05;letter-spacing:.5px}
+  .logo-text .tag{color:#cfd6dd;font-size:14px;font-weight:400;margin-top:6px;letter-spacing:.3px}
+
+  h1.app-title{
+    font-size:22px;font-weight:900;margin:0 0 16px;
+    color:var(--cyan);background:#000;display:inline-block;
+    padding:8px 16px;border-radius:10px;letter-spacing:.4px;
+  }
+
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;margin-bottom:16px;box-shadow:var(--shadow);
+  }
+  .card h2{
+    font-size:15px;font-weight:700;margin:0 0 14px;
+    color:var(--cyan);background:#000;display:inline-block;
+    padding:6px 12px;border-radius:8px;letter-spacing:.3px;
+  }
+  .step-no{display:inline-block;background:var(--cyan);color:#000;font-weight:900;
+    border-radius:6px;padding:1px 8px;margin-right:6px;font-size:13px}
+
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:0 0 5px}
+  input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+    background:var(--input);color:var(--text);font-family:inherit;font-size:14px;outline:none;
+    transition:border .15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .field{margin-bottom:12px}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--cyan);color:#000;border:none;border-radius:10px;
+    padding:11px 18px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;
+    transition:transform .08s,filter .15s;letter-spacing:.2px;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--cyan);border:1px solid var(--cyan)}
+  .btn.danger{background:#ff4d4f;color:#fff}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  .muted{color:var(--muted)}
+
+  details.settings summary{
+    cursor:pointer;font-weight:700;color:var(--cyan);background:#000;
+    display:inline-block;padding:6px 12px;border-radius:8px;list-style:none;font-size:14px;
+  }
+  details.settings summary::-webkit-details-marker{display:none}
+  details.settings[open] summary{margin-bottom:14px}
+
+  /* image / crop */
+  .img-stage{max-width:100%;margin-top:12px}
+  .img-stage img{max-width:100%;display:block;border-radius:10px}
+  #cropArea{display:none;max-height:460px}
+  #pdfArea{display:none}
+  .pdf-chip{display:inline-flex;align-items:center;gap:8px;background:var(--card-2);
+    border:1px solid var(--cyan);color:var(--text);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:500}
+  .pdf-chip b{color:var(--cyan)}
+  #pdfPreview{display:block;max-width:100%;margin-top:12px;border:1px solid var(--border);border-radius:10px}
+
+  /* table */
+  .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+  th,td{border:1px solid var(--border);padding:7px 8px;text-align:left;vertical-align:middle}
+  th{background:var(--th);color:var(--text);font-weight:700;font-size:12px;white-space:nowrap}
+  td input,td select{padding:6px 7px;font-size:13px;border-radius:7px}
+  td.num input{text-align:right}
+  .row-del{background:#ff4d4f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;width:26px;height:26px}
+
+  /* summary cards */
+  .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .sum-card{background:var(--card-2);border:1px solid var(--border);border-left:4px solid var(--cyan);
+    border-radius:10px;padding:12px 14px}
+  .sum-card .pname{font-weight:700;font-size:14px;margin-bottom:4px}
+  .sum-card .pmeta{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .sum-card .wsp{font-size:22px;font-weight:900;color:var(--cyan)}
+  .sum-card .wsp small{font-size:12px;color:var(--muted);font-weight:500}
+
+  /* memory */
+  .mem-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .mem-count{font-size:12px;color:var(--muted)}
+  .mem-list{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+  .mem-item{background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px}
+  .mem-item .mp{font-weight:700}
+  .mem-item .mw{color:var(--cyan);font-weight:900}
+  .mem-item .md{color:var(--muted);font-size:11px;margin-top:4px}
+
+  .status{margin-top:12px;font-size:13px;font-weight:500;padding:10px 14px;border-radius:10px;display:none}
+  .status.show{display:block}
+  .status.ok{background:rgba(0,197,255,.12);color:var(--cyan);border:1px solid var(--cyan)}
+  .status.err{background:rgba(255,77,79,.12);color:#ff6b6b;border:1px solid #ff4d4f}
+  .status.warn{background:rgba(255,193,7,.12);color:#ffc107;border:1px solid #ffc107}
+
+  .spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;
+    display:inline-block;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .totals{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:13px}
+  .totals .t{background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:8px 14px}
+  .totals .t b{color:var(--cyan)}
+
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:24px 0 8px}
+
+  @media (max-width:640px){
+    .grid2,.grid3{grid-template-columns:1fr}
+    .logo-banner{flex-direction:row;gap:14px;padding:16px}
+    .logo-grid svg{height:62px}
+    .logo-text .name{font-size:19px}
+    .logo-text .tag{font-size:12px}
+    h1.app-title{font-size:18px}
+    .wrap{padding:12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- TOP UTILITY BAR -->
+  <div class="topbar">
+    <span class="version" id="versionBadge">v2.3</span>
+    <div class="toggle" id="themeToggle" title="Toggle light / dark">
+      <span id="themeLabel">Dark</span>
+      <span class="switch"></span>
+    </div>
+  </div>
+
+  <!-- LOGO BANNER -->
+  <div class="logo-banner">
+    <div class="logo-grid" id="ibiLogo"></div>
+    <div class="logo-divider"></div>
+    <div class="logo-text">
+      <div class="name">INDIA BUSINESS<br>INTERNATIONAL</div>
+      <div class="tag">eCommerce for the World</div>
+    </div>
+  </div>
+
+  <h1 class="app-title">IBI Wholesale Price Generator</h1>
+
+  <!-- SETTINGS -->
+  <div class="card">
+    <details class="settings" id="settingsBox">
+      <summary>⚙️ Settings &amp; Connections</summary>
+      <div class="field">
+        <label>Gemini API Key <span class="muted">(stored only on this device)</span></label>
+        <input type="password" id="apiKey" placeholder="AIza...  — get a free key at aistudio.google.com/apikey" autocomplete="off">
+        <div class="hint">Used only to read the scanned invoice. Sent directly to Google, nowhere else.</div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Gemini Model</label>
+          <select id="model">
+            <option value="gemini-2.5-flash">gemini-2.5-flash (fast, recommended)</option>
+            <option value="gemini-3.5-flash">gemini-3.5-flash (newest)</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Default transport split method</label>
+          <select id="defaultMethod">
+            <option value="value">By value (proportional to amount)</option>
+            <option value="qty">By quantity</option>
+            <option value="equal">Equal split per line</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Google Apps Script Web App URL <span class="muted">(saves to your ERP sheet)</span></label>
+        <input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
+        <div class="hint">Deploy the included <b>Code.gs</b> as a Web App and paste the /exec URL here.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm" id="saveSettings">Save Settings</button>
+        <button class="btn ghost sm" id="pingBtn">Test Sheet Connection</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- STEP 1: SCAN -->
+  <div class="card">
+    <h2><span class="step-no">1</span>Scan / Upload Invoice</h2>
+    <p class="hint" style="margin-top:-6px">Take a photo, or upload an <b>image</b> or <b>PDF</b> of a Tax Invoice / handwritten note. Images can be cropped; PDFs (incl. multi-page) are read directly.</p>
+    <div class="btn-row">
+      <label class="btn" for="fileCamera" style="margin:0">📷 Scan with Camera</label>
+      <input type="file" id="fileCamera" accept="image/*" capture="environment" style="display:none">
+      <label class="btn ghost" for="fileUpload" style="margin:0">📄 Upload Image / PDF</label>
+      <input type="file" id="fileUpload" accept="image/*,application/pdf" style="display:none">
+    </div>
+
+    <div class="img-stage">
+      <div id="cropArea"><img id="cropImg" alt=""></div>
+      <div id="pdfArea">
+        <div class="pdf-chip" id="pdfInfo"></div>
+        <canvas id="pdfPreview"></canvas>
+      </div>
+    </div>
+
+    <div class="btn-row" id="cropControls" style="margin-top:12px;display:none">
+      <button class="btn sm ghost" id="rotateBtn">↻ Rotate</button>
+      <button class="btn sm ghost" id="resetCropBtn">Reset Crop</button>
+      <button class="btn" id="extractBtn">✨ Extract with AI</button>
+      <button class="btn sm danger" id="clearImgBtn">Remove File</button>
+    </div>
+    <div class="status" id="extractStatus"></div>
+  </div>
+
+  <!-- STEP 2: REVIEW ITEMS -->
+  <div class="card" id="itemsCard" style="display:none">
+    <h2><span class="step-no">2</span>Review &amp; Correct Line Items</h2>
+    <p class="hint" style="margin-top:-6px">Edit any value the AI got wrong before computing. Description is saved <b>exactly</b> as entered.</p>
+    <div class="grid3">
+      <div class="field"><label>Supplier / Vendor</label><input type="text" id="supplier"></div>
+      <div class="field"><label>Invoice No</label><input type="text" id="invoiceNo"></div>
+      <div class="field"><label>Invoice Date</label><input type="text" id="invoiceDate" placeholder="DD-MM-YYYY"></div>
+    </div>
+
+    <div class="tbl-scroll">
+      <table id="itemsTable">
+        <thead>
+          <tr>
+            <th>Description of Good</th>
+            <th>Role</th>
+            <th>HSN Code</th>
+            <th>Qty</th>
+            <th>Unit Price (rate)</th>
+            <th>GST %</th>
+            <th>Amount on bill</th>
+            <th>Amount incl. GST?</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn ghost sm" id="addRowBtn">+ Add Row</button>
+    </div>
+  </div>
+
+  <!-- STEP 2b: COMBINE / CLUB PRODUCTS -->
+  <div class="card" id="comboCard" style="display:none">
+    <h2><span class="step-no">2b</span>Combine Products into a Single SKU <span class="muted" style="font-size:12px;font-weight:400">(optional)</span></h2>
+    <p class="hint" style="margin-top:-6px">Club two or more products that <b>you</b> sell together (e.g. <b>Uruli 17 + SUPLATE 12 Inch</b>). Nothing is pre-selected — you choose every product and quantity yourself. Each component's per-unit landed cost (incl. packing + transport) is summed into one combined WSP.</p>
+    <div id="comboList"></div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn ghost sm" id="addComboBtn">+ Create Combo</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: TRANSPORT & COMPUTE -->
+  <div class="card" id="computeCard" style="display:none">
+    <h2><span class="step-no">3</span>Transportation &amp; Wholesale Price</h2>
+    <div class="grid3">
+      <div class="field">
+        <label>Total Transportation Charges (₹)</label>
+        <input type="number" id="transport" min="0" step="0.01" value="0">
+      </div>
+      <div class="field">
+        <label>Transport Split Method</label>
+        <select id="method">
+          <option value="value">By value</option>
+          <option value="qty">By quantity</option>
+          <option value="equal">Equal per line</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Margin % <span class="muted">(optional)</span></label>
+        <input type="number" id="margin" min="0" step="0.1" value="0">
+      </div>
+    </div>
+    <div class="field" style="max-width:380px">
+      <label>Packing cost distribution <span class="muted">(for lines marked "Packing")</span></label>
+      <select id="packMethod">
+        <option value="perunit">Equally per unit (recommended)</option>
+        <option value="perline">Equally per product line</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="computeBtn">🧮 Calculate WSP per Unit</button>
+    </div>
+
+    <div class="totals" id="totalsRow" style="display:none"></div>
+
+    <div id="summaryWrap" style="margin-top:16px"></div>
+
+    <div class="btn-row" id="saveRow" style="display:none;margin-top:16px">
+      <button class="btn" id="saveBtn">💾 Save to Google Sheet &amp; ERP</button>
+      <button class="btn ghost sm" id="newInvoiceBtn">Start New Invoice</button>
+    </div>
+    <div class="status" id="saveStatus"></div>
+  </div>
+
+  <!-- LOCAL MEMORY -->
+  <div class="card">
+    <h2>📒 Local Memory (last 24 items)</h2>
+    <div class="mem-head">
+      <span class="mem-count" id="memCount">0 of 24 stored on this device</span>
+      <button class="btn danger sm" id="clearMemBtn">🗑️ Clear All Memory</button>
+    </div>
+    <div class="mem-list" id="memList"></div>
+    <p class="hint" id="memEmpty">No items stored yet. Calculated items appear here automatically.</p>
+  </div>
+
+  <footer>
+    India Business International &middot; iINTELLIGENCEi &middot; eCommerce for the World<br>
+    IBI Wholesale Price Generator <span id="footVer">v2.3</span>
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   IBI WHOLESALE PRICE GENERATOR
+   Version control:  v<major>  for big features,  v<major>.<minor>  for patches
+   ============================================================ */
+const APP_VERSION = "v2.3";
+const MEM_LIMIT = 24;
+const LS = {
+  api:"ibi_wsp_apikey", model:"ibi_wsp_model", url:"ibi_wsp_scripturl",
+  method:"ibi_wsp_method", theme:"ibi_wsp_theme", mem:"ibi_wsp_memory"
+};
+
+document.getElementById("versionBadge").textContent = APP_VERSION;
+document.getElementById("footVer").textContent = APP_VERSION;
+
+/* ---------- Build the dot-grid logo (SVG) ---------- */
+(function buildLogo(){
+  const radii=[3.4,4.8,6.2,7.8,9.4];
+  const colX=[16,38,62,89,119];
+  const rowY=[16,42,68,94,120];
+  let dots="";
+  for(let c=0;c<5;c++){
+    for(let r=0;r<5;r++){
+      dots+=`<circle cx="${colX[c]}" cy="${rowY[r]}" r="${radii[c]}" fill="#00c5ff"/>`;
+    }
+  }
+  document.getElementById("ibiLogo").innerHTML =
+    `<svg viewBox="0 0 135 136" xmlns="http://www.w3.org/2000/svg">${dots}</svg>`;
+})();
+
+/* ---------- Theme ---------- */
+const root=document.documentElement;
+function applyTheme(t){
+  root.setAttribute("data-theme",t);
+  document.getElementById("themeLabel").textContent = t==="dark"?"Dark":"Light";
+  localStorage.setItem(LS.theme,t);
+}
+applyTheme(localStorage.getItem(LS.theme)||"dark");
+document.getElementById("themeToggle").addEventListener("click",()=>{
+  applyTheme(root.getAttribute("data-theme")==="dark"?"light":"dark");
+});
+
+/* ---------- Settings load/save ---------- */
+const el=id=>document.getElementById(id);
+el("apiKey").value   = localStorage.getItem(LS.api)||"";
+el("model").value    = localStorage.getItem(LS.model)||"gemini-2.5-flash";
+el("scriptUrl").value= localStorage.getItem(LS.url)||"";
+el("defaultMethod").value = localStorage.getItem(LS.method)||"value";
+el("method").value   = el("defaultMethod").value;
+
+el("saveSettings").addEventListener("click",()=>{
+  localStorage.setItem(LS.api,el("apiKey").value.trim());
+  localStorage.setItem(LS.model,el("model").value);
+  localStorage.setItem(LS.url,el("scriptUrl").value.trim());
+  localStorage.setItem(LS.method,el("defaultMethod").value);
+  el("method").value = el("defaultMethod").value;
+  flash("extractStatus","ok","Settings saved on this device.");
+});
+
+/* ---------- Status helper ---------- */
+function flash(id,type,msg,keep){
+  const s=el(id);
+  s.className="status show "+type;
+  s.innerHTML=msg;
+  if(!keep) clearTimeout(s._t), s._t=setTimeout(()=>s.classList.remove("show"),5000);
+}
+
+/* ---------- Date/time stamp ---------- */
+function stamp(d){
+  const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  let h=d.getHours(); const ap=h>=12?"PM":"AM"; h=h%12||12;
+  const p=n=>String(n).padStart(2,"0");
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${days[d.getDay()]}, ${p(h)}:${p(d.getMinutes())}:${p(d.getSeconds())} ${ap}`;
+}
+
+/* ============================================================
+   IMAGE + CROP
+   ============================================================ */
+/* ============================================================
+   FILE INPUT  (image -> crop,  PDF -> sent natively to AI)
+   ============================================================ */
+if(window.pdfjsLib){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; }catch(e){} }
+
+let cropper=null;
+let fileMode=null;       // "image" | "pdf" | null
+let pdfB64=null;         // base64 of uploaded PDF (no data: prefix)
+
+function handleFile(file){
+  if(!file) return;
+  const isPdf = file.type==="application/pdf" || /\.pdf$/i.test(file.name);
+  if(isPdf){ loadPdf(file); } else { loadImage(file); }
+}
+
+function loadImage(file){
+  fileMode="image"; pdfB64=null;
+  el("pdfArea").style.display="none";
+  const reader=new FileReader();
+  reader.onload=e=>{
+    el("cropImg").src=e.target.result;
+    el("cropArea").style.display="block";
+    el("cropControls").style.display="flex";
+    el("rotateBtn").style.display=""; el("resetCropBtn").style.display="";
+    if(cropper) cropper.destroy();
+    cropper=new Cropper(el("cropImg"),{viewMode:1,autoCropArea:1,background:false,responsive:true});
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadPdf(file){
+  if(cropper){ cropper.destroy(); cropper=null; }
+  el("cropArea").style.display="none";
+  fileMode="pdf";
+  if(file.size>18*1024*1024){
+    flash("extractStatus","warn","Large PDF ("+(file.size/1048576).toFixed(1)+" MB). If extraction fails, compress it or upload a single page.");
+  }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    pdfB64=String(e.target.result).split(",")[1];
+    el("pdfArea").style.display="block";
+    el("cropControls").style.display="flex";
+    // PDFs aren't cropped/rotated
+    el("rotateBtn").style.display="none"; el("resetCropBtn").style.display="none";
+    el("pdfInfo").innerHTML="📄 <b>"+esc(file.name)+"</b> &nbsp;·&nbsp; "+(file.size/1024).toFixed(0)+" KB &nbsp;·&nbsp; ready to extract";
+    renderPdfPreview(pdfB64);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function renderPdfPreview(b64){
+  const canvas=el("pdfPreview"); const ctx=canvas.getContext("2d");
+  if(!window.pdfjsLib){ canvas.style.display="none"; return; }
+  try{
+    const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+    const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+    el("pdfInfo").innerHTML=el("pdfInfo").innerHTML.replace("ready to extract", pdf.numPages+" page(s) · ready to extract");
+    const page=await pdf.getPage(1);
+    const wrapW=Math.min(canvas.parentElement.clientWidth||600, 700);
+    const v0=page.getViewport({scale:1});
+    const scale=Math.min(2, wrapW/v0.width);
+    const vp=page.getViewport({scale});
+    canvas.width=vp.width; canvas.height=vp.height; canvas.style.display="block";
+    await page.render({canvasContext:ctx,viewport:vp}).promise;
+  }catch(err){ canvas.style.display="none"; /* preview optional; extraction still works */ }
+}
+
+el("fileCamera").addEventListener("change",e=>handleFile(e.target.files[0]));
+el("fileUpload").addEventListener("change",e=>handleFile(e.target.files[0]));
+el("rotateBtn").addEventListener("click",()=>cropper&&cropper.rotate(90));
+el("resetCropBtn").addEventListener("click",()=>cropper&&cropper.reset());
+el("clearImgBtn").addEventListener("click",()=>{
+  if(cropper) cropper.destroy(); cropper=null;
+  fileMode=null; pdfB64=null;
+  el("cropArea").style.display="none"; el("pdfArea").style.display="none"; el("cropControls").style.display="none";
+  el("cropImg").src=""; el("pdfInfo").innerHTML=""; const c=el("pdfPreview"); c.style.display="none"; c.getContext("2d").clearRect(0,0,c.width,c.height);
+  el("fileCamera").value=""; el("fileUpload").value="";
+});
+
+/* ============================================================
+   AI EXTRACTION (Gemini, direct from browser)
+   ============================================================ */
+const PROMPT = `You are reading a purchase/tax invoice or a handwritten goods note from an Indian supplier.
+Return ONLY valid JSON (no markdown, no commentary) in exactly this shape:
+{
+ "supplier":"",
+ "invoice_no":"",
+ "invoice_date":"",
+ "items":[
+   {"description":"","hsn":"","quantity":0,"unit_price":0,"gst_percent":0,"amount":0,"amount_includes_gst":true,"is_packing":false}
+ ]
+}
+Rules:
+- "description": copy the product name/particulars EXACTLY as written on the bill.
+- "hsn": the HSN/SAC code if present, else "".
+- "quantity": numeric quantity only (strip "PCS","Nos" etc).
+- "unit_price": the per-unit rate as printed.
+- "gst_percent": the GST/Tax rate for that line (e.g. 18, 5, 12). If shown as CGST+SGST, add them. If none, 0.
+- "amount": the line amount printed in the Amount/Total column.
+- "amount_includes_gst": true if that printed amount already includes the GST/tax, false if it is the taxable value (tax added separately in a summary).
+- "is_packing": true ONLY if the line is packaging material (e.g. packing box, carton, bubble wrap, tape, packing cover) rather than a sellable product. Otherwise false.
+- invoice_date as printed (DD-MM-YYYY if possible). Use "" for anything not present.
+Output JSON only.`;
+
+el("extractBtn").addEventListener("click",async()=>{
+  const key=el("apiKey").value.trim()||localStorage.getItem(LS.api);
+  if(!key){flash("extractStatus","err","Enter your Gemini API key in Settings first.");el("settingsBox").open=true;return;}
+  if(!fileMode || (fileMode==="image"&&!cropper) || (fileMode==="pdf"&&!pdfB64)){
+    flash("extractStatus","err","Load an invoice image or PDF first.");return;
+  }
+
+  const btn=el("extractBtn"); const old=btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Reading invoice...';
+  flash("extractStatus","warn","Extracting with AI — please wait...",true);
+
+  try{
+    let filePart;
+    if(fileMode==="pdf"){
+      filePart={inline_data:{mime_type:"application/pdf",data:pdfB64}};
+    }else{
+      const canvas=cropper.getCroppedCanvas({maxWidth:1600,maxHeight:1600});
+      const b64=canvas.toDataURL("image/jpeg",0.9).split(",")[1];
+      filePart={inline_data:{mime_type:"image/jpeg",data:b64}};
+    }
+    const model=el("model").value||"gemini-2.5-flash";
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+    const body={
+      contents:[{parts:[{text:PROMPT},filePart]}],
+      generationConfig:{temperature:0,responseMimeType:"application/json"}
+    };
+    const resp=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const data=await resp.json();
+    if(data.error) throw new Error(data.error.message||"Gemini error");
+    let txt=(data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts[0].text)||"";
+    txt=txt.replace(/```json|```/g,"").trim();
+    const parsed=JSON.parse(txt);
+
+    el("supplier").value   = parsed.supplier||"";
+    el("invoiceNo").value  = parsed.invoice_no||"";
+    el("invoiceDate").value= parsed.invoice_date||"";
+    items = (parsed.items||[]).map(normItem);
+    if(!items.length) items=[blankItem()];
+    renderItems();
+    el("itemsCard").style.display="block";
+    el("comboCard").style.display="block";
+    el("computeCard").style.display="block";
+    el("itemsCard").scrollIntoView({behavior:"smooth"});
+    flash("extractStatus","ok",`Extracted ${items.length} line item(s). Review &amp; correct below.`);
+  }catch(err){
+    flash("extractStatus","err","Could not read invoice: "+err.message+". Try a clearer image / PDF, or add rows manually.");
+    if(!items.length){items=[blankItem()];renderItems();el("itemsCard").style.display="block";el("comboCard").style.display="block";el("computeCard").style.display="block";}
+  }finally{
+    btn.disabled=false; btn.innerHTML=old;
+  }
+});
+
+/* ============================================================
+   ITEMS TABLE
+   ============================================================ */
+let items=[];
+let uidSeq=1;
+function newUid(){return "it"+(uidSeq++);}
+function blankItem(){return {uid:newUid(),description:"",role:"product",hsn:"",quantity:1,unit_price:0,gst_percent:0,amount:0,amount_includes_gst:true};}
+function normItem(it){return {
+  uid:newUid(),
+  description:String(it.description||""),
+  role: it.is_packing===true ? "packing" : "product",
+  hsn:String(it.hsn||""),
+  quantity:Number(it.quantity)||0,
+  unit_price:Number(it.unit_price)||0,
+  gst_percent:Number(it.gst_percent)||0,
+  amount:Number(it.amount)||0,
+  amount_includes_gst: it.amount_includes_gst!==false
+};}
+
+function renderItems(){
+  const tb=el("itemsBody"); tb.innerHTML="";
+  items.forEach((it,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td><input type="text" data-i="${i}" data-k="description" value="${esc(it.description)}"></td>
+      <td><select data-i="${i}" data-k="role" style="width:96px">
+            <option value="product" ${it.role!=="packing"?"selected":""}>Product</option>
+            <option value="packing" ${it.role==="packing"?"selected":""}>Packing</option>
+          </select></td>
+      <td><input type="text" data-i="${i}" data-k="hsn" value="${esc(it.hsn)}" style="width:90px"></td>
+      <td class="num"><input type="number" step="any" data-i="${i}" data-k="quantity" value="${it.quantity}" style="width:70px"></td>
+      <td class="num"><input type="number" step="any" data-i="${i}" data-k="unit_price" value="${it.unit_price}" style="width:90px"></td>
+      <td class="num"><input type="number" step="any" data-i="${i}" data-k="gst_percent" value="${it.gst_percent}" style="width:60px"></td>
+      <td class="num"><input type="number" step="any" data-i="${i}" data-k="amount" value="${it.amount}" style="width:100px"></td>
+      <td style="text-align:center"><input type="checkbox" data-i="${i}" data-k="amount_includes_gst" ${it.amount_includes_gst?"checked":""}></td>
+      <td style="text-align:center"><button class="row-del" data-del="${i}" title="Delete row">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  refreshComboSelects();
+}
+function esc(s){return String(s).replace(/"/g,"&quot;").replace(/</g,"&lt;");}
+
+function onItemEdit(e){
+  const t=e.target, i=t.dataset.i, k=t.dataset.k; if(i==null||!k) return;
+  if(k==="amount_includes_gst") items[i][k]=t.checked;
+  else if(["description","hsn","role"].includes(k)) items[i][k]=t.value;
+  else items[i][k]=Number(t.value)||0;
+  if(["description","role","quantity"].includes(k)) refreshComboSelects();
+}
+el("itemsBody").addEventListener("input",onItemEdit);
+el("itemsBody").addEventListener("change",onItemEdit);
+el("itemsBody").addEventListener("click",e=>{
+  if(e.target.dataset.del!=null){items.splice(+e.target.dataset.del,1);renderItems();}
+});
+el("addRowBtn").addEventListener("click",()=>{items.push(blankItem());renderItems();});
+
+/* ============================================================
+   COMBINE / CLUB PRODUCTS
+   ============================================================ */
+let combos=[];
+function productItems(){return items.filter(it=>it.role!=="packing");}
+function comboPartOptions(selUid){
+  const ps=productItems();
+  const opts=ps.map(p=>`<option value="${p.uid}" ${p.uid===selUid?"selected":""}>${esc(p.description||"(no name)")}</option>`).join("");
+  return `<option value="">-- select product --</option>`+opts;
+}
+el("addComboBtn").addEventListener("click",()=>{
+  // Start completely empty — no preset products. You choose every component yourself.
+  combos.push({name:"",parts:[{uid:"",qty:1},{uid:"",qty:1}]});
+  renderCombos();
+});
+function renderCombos(){
+  const wrap=el("comboList"); if(!wrap) return;
+  if(!combos.length){wrap.innerHTML='<p class="hint" style="margin:0">No combos yet. Click "Create Combo" to club products sold together (e.g. Uruli + Lid).</p>';return;}
+  wrap.innerHTML=combos.map((cb,ci)=>`
+    <div style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div class="field" style="margin-bottom:10px">
+        <label>Combined product name</label>
+        <input type="text" data-c="${ci}" data-cf="name" value="${esc(cb.name)}" placeholder="e.g. Aluminium Uruli 17 + SUPLATE 12 Inch">
+      </div>
+      ${cb.parts.map((pt,pi)=>`
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <select data-c="${ci}" data-p="${pi}" data-pf="uid" style="flex:1;min-width:160px">${comboPartOptions(pt.uid)}</select>
+          <span class="muted" style="font-size:12px">× qty</span>
+          <input type="number" data-c="${ci}" data-p="${pi}" data-pf="qty" value="${pt.qty}" min="1" step="any" style="width:74px" title="Units of this product per combo">
+          <button class="row-del" data-delpart="${ci}" data-p="${pi}" title="Remove component">×</button>
+        </div>`).join("")}
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn ghost sm" data-addpart="${ci}">+ Add component</button>
+        <button class="btn danger sm" data-delcombo="${ci}">Remove combo</button>
+      </div>
+    </div>`).join("");
+}
+function refreshComboSelects(){ if(typeof combos!=="undefined" && combos.length) renderCombos(); }
+
+function comboFieldEdit(e){
+  const t=e.target, c=t.dataset.c; if(c==null) return;
+  if(t.dataset.cf==="name") combos[c].name=t.value;
+  else if(t.dataset.pf==="qty") combos[c].parts[t.dataset.p].qty=Number(t.value)||0;
+  else if(t.dataset.pf==="uid") combos[c].parts[t.dataset.p].uid=t.value;
+}
+el("comboList").addEventListener("input",comboFieldEdit);
+el("comboList").addEventListener("change",comboFieldEdit);
+el("comboList").addEventListener("click",e=>{
+  const t=e.target;
+  if(t.dataset.addpart!=null){const c=t.dataset.addpart;combos[c].parts.push({uid:"",qty:1});renderCombos();}
+  else if(t.dataset.delpart!=null){const c=+t.dataset.delpart,p=+t.dataset.p;combos[c].parts.splice(p,1);if(!combos[c].parts.length)combos.splice(c,1);renderCombos();}
+  else if(t.dataset.delcombo!=null){combos.splice(+t.dataset.delcombo,1);renderCombos();}
+});
+
+/* ============================================================
+   COMPUTE LANDED COST / WSP
+   ============================================================ */
+let computed=[];      // products (role!=packing) with WSP incl packing+transport
+let computedCombos=[];
+let lastPackInfo={pool:0,perUnit:0,method:""};
+let includeMap={};    // uid -> bool : whether an individual product is saved
+let lastMargin=0, lastIncomplete=0;
+function lineCost(it){
+  // true cost paid for the line, INCLUDING GST
+  if(it.amount_includes_gst) return it.amount>0?it.amount:(it.quantity*it.unit_price)*(1+it.gst_percent/100);
+  const base = it.amount>0 ? it.amount : it.quantity*it.unit_price;
+  return base*(1+it.gst_percent/100);
+}
+el("computeBtn").addEventListener("click",()=>{
+  if(!items.length){flash("saveStatus","err","No items to calculate.");return;}
+  const transport=Number(el("transport").value)||0;
+  const method=el("method").value;
+  const margin=Number(el("margin").value)||0;
+  const packMethod=el("packMethod").value;
+
+  // 1) line cost incl GST + transport share across ALL lines (packing included)
+  const costs=items.map(lineCost);
+  const totalCost=costs.reduce((a,b)=>a+b,0);
+  const totalQty=items.reduce((a,b)=>a+(b.quantity||0),0);
+  const n=items.length;
+  const share=items.map((it,i)=>{
+    if(transport<=0) return 0;
+    if(method==="value") return totalCost>0 ? transport*(costs[i]/totalCost) : transport/n;
+    if(method==="qty")   return totalQty>0 ? transport*((it.quantity||0)/totalQty) : transport/n;
+    return transport/n;
+  });
+
+  // 2) separate packing lines; pool their full landed cost
+  const isPack=it=>it.role==="packing";
+  let packPool=0;
+  items.forEach((it,i)=>{ if(isPack(it)) packPool+=costs[i]+share[i]; });
+
+  // 3) packing per-unit (or per-line) across PRODUCTS only
+  const prodIdx=items.map((it,i)=>i).filter(i=>!isPack(items[i]));
+  const prodUnits=prodIdx.reduce((a,i)=>a+(items[i].quantity||0),0);
+  const prodLines=prodIdx.length;
+  const packPerUnitGlobal = (packMethod==="perunit" && prodUnits>0) ? packPool/prodUnits : 0;
+  const packPerLine       = (packMethod==="perline" && prodLines>0) ? packPool/prodLines : 0;
+  lastPackInfo={pool:packPool,perUnit:packPerUnitGlobal,method:packMethod};
+
+  // 4) build product results (WSP includes packing)
+  const byUid={};
+  computed=prodIdx.map(i=>{
+    const it=items[i], qty=it.quantity||0;
+    const lineLanded=costs[i]+share[i];                // incl GST + transport
+    const landedNoPack = qty>0 ? lineLanded/qty : 0;
+    const packPU = packMethod==="perunit" ? packPerUnitGlobal : (qty>0 ? packPerLine/qty : 0);
+    const landedPerUnit = landedNoPack + packPU;       // = WSP per unit
+    const sellPerUnit = landedPerUnit*(1+margin/100);
+    const taxable = it.amount_includes_gst ? (qty*it.unit_price||it.amount/(1+it.gst_percent/100)) : (it.amount||qty*it.unit_price);
+    const r={
+      uid:it.uid, type:"Product", description:it.description, hsn:it.hsn, quantity:qty,
+      unit_price:it.unit_price, gst_percent:it.gst_percent, taxable,
+      lineCost:costs[i], transportShare:share[i], packPerUnit:packPU, packTotal:packPU*qty,
+      totalLanded:lineLanded+packPU*qty, landedPerUnit, sellPerUnit, margin, components:""
+    };
+    byUid[it.uid]=r; return r;
+  });
+
+  // 5) combos: sum component WSP/unit × qty-per-combo (you must select every component)
+  let incompleteCombos=0;
+  computedCombos=combos.map(cb=>{
+    let wsp=0, packPU=0, makeable=Infinity, compTxt=[], validParts=0, allOk=true;
+    cb.parts.forEach(pt=>{
+      const r=byUid[pt.uid]; const q=Number(pt.qty)||0;
+      if(!r||q<=0){allOk=false;return;}
+      validParts++;
+      wsp += r.landedPerUnit*q;
+      packPU += r.packPerUnit*q;
+      compTxt.push(q+"× "+r.description);
+      makeable = Math.min(makeable, Math.floor((r.quantity||0)/q));
+    });
+    // A combo needs at least 2 fully-selected components
+    if(validParts<2 || !allOk) incompleteCombos++;
+    if(validParts<2){ wsp=0; makeable=0; }
+    if(!isFinite(makeable)) makeable=0;
+    return {
+      uid:"combo_"+Math.random().toString(36).slice(2,7), type:"Combo",
+      description: cb.name || compTxt.join(" + "),
+      hsn:"", quantity:makeable, gst_percent:"", unit_price:0, taxable:0,
+      lineCost:0, transportShare:0, packPerUnit:packPU, packTotal:packPU*makeable,
+      totalLanded:wsp*makeable, landedPerUnit:wsp, sellPerUnit:wsp*(1+margin/100),
+      margin, components:compTxt.join(" + ")
+    };
+  }).filter(c=>c.landedPerUnit>0);
+  window._incompleteCombos=incompleteCombos;
+
+  // totals strip
+  const tr=el("totalsRow"); tr.style.display="flex";
+  tr.innerHTML=`
+    <div class="t">Products: <b>${computed.length}</b></div>
+    <div class="t">Total Qty: <b>${prodUnits}</b></div>
+    <div class="t">Goods Cost (incl GST): <b>₹${fmt(totalCost)}</b></div>
+    <div class="t">Transport: <b>₹${fmt(transport)}</b></div>
+    ${packPool>0?`<div class="t">Packing absorbed: <b>₹${fmt(packPool)}</b>${packMethod==="perunit"?` (₹${fmt(packPerUnitGlobal)}/unit)`:` (₹${fmt(packPerLine)}/line)`}</div>`:""}
+    <div class="t">Grand Landed: <b>₹${fmt(totalCost+transport)}</b></div>`;
+
+  // summary
+  lastMargin=margin; lastIncomplete=incompleteCombos;
+  computed.forEach(c=>{ if(includeMap[c.uid]===undefined) includeMap[c.uid]=true; });
+  renderSummary();
+  el("saveRow").style.display="flex";
+  el("summaryWrap").scrollIntoView({behavior:"smooth"});
+});
+
+function renderSummary(){
+  let html="";
+  if(lastIncomplete>0){
+    html+=`<div class="status show warn" style="position:static;margin-bottom:12px">${lastIncomplete} combo(s) skipped — each combo needs at least 2 products selected. Pick the components in step 2b.</div>`;
+  }
+  if(computedCombos.length){
+    html+='<h2 style="margin-top:0">Clubbed Products (Combos)</h2><div class="sum-grid">';
+    computedCombos.forEach(c=>{ html+=card(c,lastMargin,true); });
+    html+="</div>";
+  }
+  const incCount=computed.filter(c=>includeMap[c.uid]!==false).length;
+  html+=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px">
+    <h2 style="margin:0">Individual Products</h2>
+    ${computed.length?`<span class="hint">${incCount} of ${computed.length} will be saved &nbsp;·&nbsp; <a href="#" data-incall style="color:var(--cyan)">Include all</a> &nbsp;·&nbsp; <a href="#" data-excall style="color:var(--cyan)">Exclude all</a></span>`:""}
+  </div><div class="sum-grid">`;
+  computed.forEach(c=>{ html+=card(c,lastMargin,false); });
+  html+="</div>";
+  el("summaryWrap").innerHTML=html;
+}
+
+el("summaryWrap").addEventListener("change",e=>{
+  const u=e.target.dataset.incUid; if(u!=null){ includeMap[u]=e.target.checked; renderSummary(); }
+});
+el("summaryWrap").addEventListener("click",e=>{
+  if(e.target.dataset.incall!=null){e.preventDefault();computed.forEach(c=>includeMap[c.uid]=true);renderSummary();}
+  else if(e.target.dataset.excall!=null){e.preventDefault();computed.forEach(c=>includeMap[c.uid]=false);renderSummary();}
+});
+
+function card(c,margin,isCombo){
+  const excluded = !isCombo && includeMap[c.uid]===false;
+  return `<div class="sum-card" style="${isCombo?'border-left-color:#ffc107;':''}${excluded?'opacity:.45;':''}">
+      ${!isCombo?`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:6px;cursor:pointer">
+          <input type="checkbox" data-inc-uid="${c.uid}" ${excluded?"":"checked"}> ${excluded?"Excluded from save":"Include in save"}</label>`:""}
+      <div class="pname">${isCombo?"🧩 ":""}${esc(c.description)||"(no name)"}</div>
+      <div class="pmeta">${isCombo?("Combo: "+esc(c.components)+" · can make "+c.quantity):((c.hsn?("HSN "+esc(c.hsn)+" · "):"")+"Qty "+c.quantity+(c.gst_percent!==""?(" · GST "+c.gst_percent+"%"):""))}</div>
+      <div class="wsp">₹${fmt(c.landedPerUnit)} <small>WSP / unit</small></div>
+      ${c.packPerUnit>0?`<div class="pmeta" style="margin-top:4px">incl. ₹${fmt(c.packPerUnit)} packing/unit</div>`:""}
+      ${margin>0?`<div class="pmeta" style="margin-top:4px">+${margin}% → <b style="color:var(--cyan)">₹${fmt(c.sellPerUnit)}</b> sell/unit</div>`:""}
+    </div>`;
+}
+function fmt(n){return (Number(n)||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+/* ============================================================
+   SAVE TO GOOGLE SHEET + ERP
+   ============================================================ */
+el("saveBtn").addEventListener("click",async()=>{
+  if(!computed.length && !computedCombos.length){flash("saveStatus","err","Calculate first.");return;}
+  const url=el("scriptUrl").value.trim()||localStorage.getItem(LS.url);
+  const now=new Date();
+  const stampStr=stamp(now);
+  const batchId="WSP"+now.getTime();
+  const meta={
+    supplier:el("supplier").value, invoice_no:el("invoiceNo").value, invoice_date:el("invoiceDate").value,
+    transport_method:el("method").value, transport_total:Number(el("transport").value)||0,
+    batch_id:batchId, source:"IBI Wholesale Price Generator "+APP_VERSION
+  };
+  const toRow=c=>({
+    entry_stamp:stampStr,
+    type:c.type,
+    description:c.description,
+    components:c.components||"",
+    hsn:c.hsn,
+    total_quantity:c.quantity,
+    landed_cost_per_unit:round2(c.landedPerUnit),
+    packing_per_unit:round2(c.packPerUnit||0),
+    unit_price:round2(c.unit_price||0),
+    gst_percent:c.gst_percent,
+    taxable_value:round2(c.taxable||0),
+    line_cost_incl_gst:round2(c.lineCost||0),
+    transport_share:round2(c.transportShare||0),
+    total_landed:round2(c.totalLanded||0),
+    margin_percent:c.margin,
+    suggested_sell_per_unit:round2(c.sellPerUnit||0),
+    ...meta
+  });
+  // combos first, then only the individual products you kept ticked
+  const includedProducts = computed.filter(c=>includeMap[c.uid]!==false);
+  const rows=[...computedCombos.map(toRow), ...includedProducts.map(toRow)];
+  if(!rows.length){flash("saveStatus","err","Nothing selected to save. Tick at least one product or build a combo.");return;}
+
+  // 1) Always store in local memory (offline-safe)
+  addToMemory(rows.map(r=>({p:r.description,w:r.landed_cost_per_unit,hsn:r.hsn,q:r.total_quantity,t:stampStr,type:r.type})));
+
+  if(!url){flash("saveStatus","warn","Saved to local memory. Add your Apps Script URL in Settings to also push to the Sheet/ERP.");return;}
+
+  const btn=el("saveBtn"); const old=btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Saving...';
+  try{
+    const resp=await fetch(url,{method:"POST",body:JSON.stringify({action:"save",rows})});
+    const out=await resp.json();
+    if(out.status==="success") flash("saveStatus","ok",`Saved ${out.count||rows.length} item(s) to the Sheet &amp; ERP Wholesale Price section.`);
+    else throw new Error(out.message||"Unknown response");
+  }catch(err){
+    flash("saveStatus","err","Sheet save failed (kept in local memory): "+err.message);
+  }finally{
+    btn.disabled=false; btn.innerHTML=old;
+  }
+});
+function round2(n){return Math.round((Number(n)||0)*100)/100;}
+
+el("newInvoiceBtn").addEventListener("click",()=>{
+  items=[]; computed=[]; computedCombos=[]; combos=[]; includeMap={}; renderCombos();
+  el("itemsCard").style.display="none"; el("comboCard").style.display="none"; el("computeCard").style.display="none";
+  el("summaryWrap").innerHTML=""; el("totalsRow").style.display="none"; el("saveRow").style.display="none";
+  el("supplier").value=el("invoiceNo").value=el("invoiceDate").value="";
+  el("transport").value="0"; el("margin").value="0";
+  el("clearImgBtn").click();
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+/* ============================================================
+   LOCAL MEMORY (max 24)
+   ============================================================ */
+function getMem(){try{return JSON.parse(localStorage.getItem(LS.mem)||"[]");}catch(e){return[];}}
+function setMem(a){localStorage.setItem(LS.mem,JSON.stringify(a));}
+function addToMemory(newOnes){
+  let mem=getMem();
+  mem=newOnes.concat(mem);          // newest first
+  if(mem.length>MEM_LIMIT) mem=mem.slice(0,MEM_LIMIT);
+  setMem(mem); renderMem();
+}
+function renderMem(){
+  const mem=getMem();
+  el("memCount").textContent=`${mem.length} of ${MEM_LIMIT} stored on this device`;
+  el("memEmpty").style.display=mem.length?"none":"block";
+  el("memList").innerHTML=mem.map(m=>`
+    <div class="mem-item">
+      <div><span class="mp">${m.type==="Combo"?"🧩 ":""}${esc(m.p)||"(no name)"}</span></div>
+      <div class="mw">₹${fmt(m.w)} / unit</div>
+      <div class="md">${m.type==="Combo"?"Combo · ":""}${m.hsn?("HSN "+esc(m.hsn)+" · "):""}Qty ${m.q||""}<br>${esc(m.t||"")}</div>
+    </div>`).join("");
+}
+el("clearMemBtn").addEventListener("click",()=>{
+  if(confirm("Clear all "+getMem().length+" stored item(s) from this device? This cannot be undone.")){
+    localStorage.removeItem(LS.mem); renderMem();
+  }
+});
+renderMem();
+
+/* ---------- Ping / test sheet ---------- */
+el("pingBtn").addEventListener("click",async()=>{
+  const url=el("scriptUrl").value.trim()||localStorage.getItem(LS.url);
+  if(!url){flash("extractStatus","err","Enter your Apps Script URL first.");return;}
+  flash("extractStatus","warn","Testing connection...",true);
+  try{
+    const resp=await fetch(url,{method:"POST",body:JSON.stringify({action:"ping"})});
+    const out=await resp.json();
+    flash("extractStatus","ok","Connected ✓ "+(out.message||"")+" Sheet: "+(out.sheet||""));
+  }catch(err){flash("extractStatus","err","Connection failed: "+err.message);}
+});
+</script>
+</body>
+</html>

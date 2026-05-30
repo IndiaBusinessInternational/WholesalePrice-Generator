@@ -3,10 +3,11 @@
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
 **Brand:** cyan `#00c5ff` on black, Roboto, IBI dot-grid logo, light/dark toggle.
-**Version:** `v2.2` (shown top-left). Use `v2.x` for patches, `v3` for big features.
+**Version:** `v2.3` (shown top-left). Use `v2.x` for patches, `v3` for big features.
 
 ## What's new
-- **v2.2 — Manual-only combos.** Clicking "Create Combo" now starts a completely **empty** combo with nothing pre-selected. You choose every product and quantity yourself. A combo is only counted once you've selected at least two products; incomplete combos are skipped with a note.
+- **v2.3 — Pick what gets saved.** In the results, each individual product has an **Include in save** checkbox, with **Include all / Exclude all** shortcuts. Unticked products are excluded from the summary save (and the Sheet/ERP) but still remain available as combo components — so you can keep just the combo, or the combo plus a few chosen products.
+- **v2.2 — Manual-only combos.** Clicking "Create Combo" starts a completely **empty** combo with nothing pre-selected. A combo is counted only once you've selected at least two products.
 - **v2.1 — PDF upload.** Upload an image **or a PDF** (single or multi-page). Images can be cropped first; PDFs are sent directly to the AI for the most accurate reading of clean digital invoices. A page-1 preview is shown.
 - **v2.0 — Packing cost absorption.** Mark any line as **Packing** (the AI auto-flags boxes/cartons). Its full landed cost (incl. GST + its transport share) is spread across the actual product units and folded into every WSP/unit. Choose *equally per unit* or *equally per product line*.
 - **v2.0 — Product clubbing (combos).** Combine two or more products sold together (e.g. **Uruli 17 + SUPLATE lid**) into one SKU. The combined WSP/unit = sum of each component's per-unit landed cost (already including packing + transport) × units-per-combo. Shows how many combos you can make.
@@ -49,7 +50,8 @@ Open the app → **Settings**: paste the Gemini key and the Apps Script `/exec` 
 2. **Review & correct** the line items. Set each row's **Role** to *Product* or *Packing* (description is saved exactly as typed).
 3. *(Optional)* **Combine** products into a single SKU under "Create Combo" — you pick each component manually (nothing is preset).
 4. Enter **Total Transportation Charges**, pick the transport split + packing-distribution methods, optional margin → **Calculate WSP per Unit**.
-5. **Save to Google Sheet & ERP**. Every save also stores up to **24 items** in local memory (with a **Clear All** button).
+5. In the results, **tick which individual products to keep** (or use Include all / Exclude all). Combos are always saved; excluded products are skipped.
+6. **Save to Google Sheet & ERP**. Every save also stores up to **24 items** in local memory (with a **Clear All** button).
 
 ### Landed cost logic
 - Line cost is computed **including GST**, handling both invoice styles (amount already incl. GST, or amount = taxable value with GST added separately — toggle per row).
