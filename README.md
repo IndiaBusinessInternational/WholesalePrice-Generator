@@ -3,11 +3,12 @@
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
 **Brand:** cyan `#00c5ff` on black, Roboto, IBI dot-grid logo, light/dark toggle.
-**Version:** `v2.0` (shown top-left). Use `v2.1` for patches, `v3` for big features.
+**Version:** `v2.1` (shown top-left). Use `v2.1` for patches, `v3` for big features.
 
-## What's new in v2.0
-- **Packing cost absorption** — mark any line as **Packing** (the AI auto-flags boxes/cartons). Its full landed cost (incl. GST + its transport share) is spread across the actual product units and folded into every WSP/unit. Choose *equally per unit* or *equally per product line*.
-- **Product clubbing (combos)** — combine two or more products sold together (e.g. **Uruli 17 + SUPLATE lid**) into one SKU. The combined WSP/unit = sum of each component's per-unit landed cost (already including packing + transport) × units-per-combo. Shows how many combos you can make.
+## What's new
+- **v2.1 — PDF upload.** Upload an image **or a PDF** (single or multi-page). Images can be cropped first; PDFs are sent directly to the AI for the most accurate reading of clean digital invoices. A page-1 preview is shown.
+- **v2.0 — Packing cost absorption.** Mark any line as **Packing** (the AI auto-flags boxes/cartons). Its full landed cost (incl. GST + its transport share) is spread across the actual product units and folded into every WSP/unit. Choose *equally per unit* or *equally per product line*.
+- **v2.0 — Product clubbing (combos).** Combine two or more products sold together (e.g. **Uruli 17 + SUPLATE lid**) into one SKU. The combined WSP/unit = sum of each component's per-unit landed cost (already including packing + transport) × units-per-combo. Shows how many combos you can make.
 
 ---
 
@@ -43,7 +44,7 @@ Open the app → **Settings**: paste the Gemini key and the Apps Script `/exec` 
 ---
 
 ## How to use
-1. **Scan / Upload** an invoice → crop → **Extract with AI**.
+1. **Scan / Upload** an invoice — photo, image, or **PDF** (multi-page OK). Crop images if needed; PDFs are read directly. Then **Extract with AI**.
 2. **Review & correct** the line items. Set each row's **Role** to *Product* or *Packing* (description is saved exactly as typed).
 3. *(Optional)* **Combine** products into a single SKU under "Create Combo".
 4. Enter **Total Transportation Charges**, pick the transport split + packing-distribution methods, optional margin → **Calculate WSP per Unit**.
