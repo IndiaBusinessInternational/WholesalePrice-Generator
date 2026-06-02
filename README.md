@@ -3,10 +3,12 @@
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
 **Brand:** cyan `#00c5ff` on black, Roboto, IBI dot-grid logo, light/dark toggle.
-**Version:** `v2.3` (shown top-left). Use `v2.x` for patches, `v3` for big features.
+**Version:** `v2.5` (shown top-left). Use `v2.x` for patches, `v3` for big features.
 
 ## What's new
-- **v2.3 — Pick what gets saved.** In the results, each individual product has an **Include in save** checkbox, with **Include all / Exclude all** shortcuts. Unticked products are excluded from the summary save (and the Sheet/ERP) but still remain available as combo components — so you can keep just the combo, or the combo plus a few chosen products.
+- **v2.5 — Rename individual products.** Each individual product in the results has an optional **Rename** field (like a combo's name). Type a custom sale name and it's used in the summary, the Sheet, and the ERP; leave it blank to keep the invoice description. The original stays untouched in the items table.
+- **v2.4 — Pre-wired backend.** The Apps Script Web App URL is built in, so saving works out of the box (still editable in Settings).
+- **v2.3 — Pick what gets saved.** In the results, each individual product has an **Include in save** checkbox, with **Include all / Exclude all** shortcuts. Unticked products are excluded from the save but still remain available as combo components.
 - **v2.2 — Manual-only combos.** Clicking "Create Combo" starts a completely **empty** combo with nothing pre-selected. A combo is counted only once you've selected at least two products.
 - **v2.1 — PDF upload.** Upload an image **or a PDF** (single or multi-page). Images can be cropped first; PDFs are sent directly to the AI for the most accurate reading of clean digital invoices. A page-1 preview is shown.
 - **v2.0 — Packing cost absorption.** Mark any line as **Packing** (the AI auto-flags boxes/cartons). Its full landed cost (incl. GST + its transport share) is spread across the actual product units and folded into every WSP/unit. Choose *equally per unit* or *equally per product line*.
