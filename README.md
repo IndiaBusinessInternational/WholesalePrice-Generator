@@ -3,11 +3,11 @@
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
 **Brand:** cyan `#00c5ff` on black, Roboto, IBI dot-grid logo, light/dark toggle.
-**Version:** `v2.7` (shown top-left). Use `v2.x` for patches, `v3` for big features.
+**Version:** `v2.8` (shown top-left). Use `v2.x` for patches, `v3` for big features.
 
 ## What's new
-- **v2.7 — Delete memory items individually.** Each stored item in Local Memory now has a **×** to remove just that one, in addition to **Clear All**.
-- **v2.6 — Manual entry (no bill).** For local purchases without a tax invoice, click **Enter Manually (No Bill)** in step 1 to open the entry grid directly. Type product name, HSN, GST %, Unit Price and Qty (leave **Amount** blank), add transport in step 3, then calculate.
+- **v2.8 — Calendar date picker.** The Invoice / Purchase Date is now chosen from a calendar (no manual typing). AI-extracted dates auto-fill the picker; the sheet still stores DD-MM-YYYY.
+- **v2.7 — Delete memory items individually.** Each stored item in Local Memory has a **×** to remove just that one, in addition to **Clear All**.
 - **v2.5 — Rename individual products.** Each individual product in the results has an optional **Rename** field; the custom name is used in the summary/Sheet/ERP while the invoice description stays untouched in the items table.
 - **v2.2 — Manual-only combos.** Clicking "Create Combo" starts a completely **empty** combo with nothing pre-selected. A combo is counted only once you've selected at least two products.
 - **v2.1 — PDF upload.** Upload an image **or a PDF** (single or multi-page). Images can be cropped first; PDFs are sent directly to the AI for the most accurate reading of clean digital invoices. A page-1 preview is shown.
