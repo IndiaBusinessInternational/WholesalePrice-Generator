@@ -210,7 +210,7 @@
 
   <!-- TOP UTILITY BAR -->
   <div class="topbar">
-    <span class="version" id="versionBadge">v2.8</span>
+    <span class="version" id="versionBadge">v2.9</span>
     <div class="toggle" id="themeToggle" title="Toggle light / dark">
       <span id="themeLabel">Dark</span>
       <span class="switch"></span>
@@ -257,6 +257,14 @@
         </div>
       </div>
       <div class="field">
+        <label>Default GST treatment for landed cost</label>
+        <select id="defaultGst">
+          <option value="exclude">Exclude GST — recoverable as Input Tax Credit (net cost)</option>
+          <option value="include">Include GST in landed cost</option>
+        </select>
+        <div class="hint">IBI claims ITC, so GST is <b>excluded</b> from cost by default. Switch to "Include" only if you do not reclaim purchase GST.</div>
+      </div>
+      <div class="field">
         <label>Google Apps Script Web App URL <span class="muted">(saves to your ERP sheet)</span></label>
         <input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
         <div class="hint">Deploy the included <b>Code.gs</b> as a Web App and paste the /exec URL here.</div>
@@ -300,7 +308,7 @@
   <!-- STEP 2: REVIEW ITEMS -->
   <div class="card" id="itemsCard" style="display:none">
     <h2><span class="step-no">2</span>Review &amp; Correct Line Items</h2>
-    <p class="hint" style="margin-top:-6px">Edit any value before computing. Description is saved <b>exactly</b> as entered.<br><b>Manual (no-bill) entry:</b> type the product name, HSN, GST %, Unit Price and Qty; leave <b>Amount</b> blank. Tick <b>Incl. GST?</b> if the price you paid already includes GST (or there's no GST); untick it to add GST on top of the rate.</p>
+    <p class="hint" style="margin-top:-6px">Edit any value before computing. Description is saved <b>exactly</b> as entered.<br><b>Incl. GST?</b> tick it only if the <b>Amount</b> figure already includes GST; untick it when GST is charged separately in a tax summary (as on most invoices — including this one). Whether that GST stays in your cost or is treated as recoverable <b>ITC</b> is set by <b>GST in landed cost</b> in step 3.<br><b>Manual (no-bill) entry:</b> type the product name, HSN, GST %, Unit Price and Qty; leave <b>Amount</b> blank.</p>
     <div class="grid3">
       <div class="field"><label>Supplier / Vendor</label><input type="text" id="supplier"></div>
       <div class="field"><label>Invoice No</label><input type="text" id="invoiceNo"></div>
@@ -361,12 +369,21 @@
         <input type="number" id="margin" min="0" step="0.1" value="0">
       </div>
     </div>
-    <div class="field" style="max-width:380px">
-      <label>Packing cost distribution <span class="muted">(for lines marked "Packing")</span></label>
-      <select id="packMethod">
-        <option value="perunit">Equally per unit (recommended)</option>
-        <option value="perline">Equally per product line</option>
-      </select>
+    <div class="grid2">
+      <div class="field">
+        <label>GST in landed cost <span class="muted">(ITC treatment)</span></label>
+        <select id="gstMode">
+          <option value="exclude">Exclude — GST is recoverable ITC (net cost)</option>
+          <option value="include">Include GST in landed cost</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Packing cost distribution <span class="muted">(for lines marked "Packing")</span></label>
+        <select id="packMethod">
+          <option value="perunit">Equally per unit (recommended)</option>
+          <option value="perline">Equally per product line</option>
+        </select>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn" id="computeBtn">🧮 Calculate WSP per Unit</button>
@@ -397,7 +414,7 @@
 
   <footer>
     India Business International &middot; iINTELLIGENCEi &middot; eCommerce for the World<br>
-    IBI Wholesale Price Generator <span id="footVer">v2.8</span>
+    IBI Wholesale Price Generator <span id="footVer">v2.9</span>
   </footer>
 </div>
 
@@ -406,13 +423,14 @@
    IBI WHOLESALE PRICE GENERATOR
    Version control:  v<major>  for big features,  v<major>.<minor>  for patches
    ============================================================ */
-const APP_VERSION = "v2.8";
+const APP_VERSION = "v2.9";
 // Pre-wired Apps Script Web App URL (editable in Settings; saved value overrides this)
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT43nU8lHpK_OE1hIfBwcc7ct9IvBgF5gA63fwlggw_Hyb9RJtf5Yf7FUVSf9bCY4w/exec";
 const MEM_LIMIT = 24;
 const LS = {
   api:"ibi_wsp_apikey", model:"ibi_wsp_model", url:"ibi_wsp_scripturl",
-  method:"ibi_wsp_method", theme:"ibi_wsp_theme", mem:"ibi_wsp_memory"
+  method:"ibi_wsp_method", theme:"ibi_wsp_theme", mem:"ibi_wsp_memory",
+  gstmode:"ibi_wsp_gstmode"
 };
 
 document.getElementById("versionBadge").textContent = APP_VERSION;
@@ -452,13 +470,17 @@ el("model").value    = localStorage.getItem(LS.model)||"gemini-2.5-flash";
 el("scriptUrl").value= localStorage.getItem(LS.url)||DEFAULT_SCRIPT_URL;
 el("defaultMethod").value = localStorage.getItem(LS.method)||"value";
 el("method").value   = el("defaultMethod").value;
+el("defaultGst").value = localStorage.getItem(LS.gstmode)||"exclude";
+el("gstMode").value  = el("defaultGst").value;
 
 el("saveSettings").addEventListener("click",()=>{
   localStorage.setItem(LS.api,el("apiKey").value.trim());
   localStorage.setItem(LS.model,el("model").value);
   localStorage.setItem(LS.url,el("scriptUrl").value.trim());
   localStorage.setItem(LS.method,el("defaultMethod").value);
+  localStorage.setItem(LS.gstmode,el("defaultGst").value);
   el("method").value = el("defaultMethod").value;
+  el("gstMode").value = el("defaultGst").value;
   flash("extractStatus","ok","Settings saved on this device.");
 });
 
@@ -604,7 +626,7 @@ Rules:
 - "unit_price": the per-unit rate as printed.
 - "gst_percent": the GST/Tax rate for that line (e.g. 18, 5, 12). If shown as CGST+SGST, add them. If none, 0.
 - "amount": the line amount printed in the Amount/Total column.
-- "amount_includes_gst": true if that printed amount already includes the GST/tax, false if it is the taxable value (tax added separately in a summary).
+- "amount_includes_gst": set false for a normal tax invoice where the line Amount is the taxable value and CGST/SGST (or IGST) are listed separately in a tax summary — this is the common case, so prefer false. Set true ONLY when the line Amount visibly already includes the tax (e.g. an MRP/retail cash bill with no separate tax breakup).
 - "is_packing": true ONLY if the line is packaging material (e.g. packing box, carton, bubble wrap, tape, packing cover) rather than a sellable product. Otherwise false.
 - invoice_date as printed (DD-MM-YYYY if possible). Use "" for anything not present.
 Output JSON only.`;
@@ -781,11 +803,21 @@ let includeMap={};    // uid -> bool : whether an individual product is saved
 let renameMap={};     // uid -> custom display/sale name (blank = use invoice description)
 let lastMargin=0, lastIncomplete=0;
 function dispName(c){ const r=renameMap[c.uid]; return (r&&r.trim())?r.trim():c.description; }
-function lineCost(it){
-  // figure entered: explicit billed amount if given, else qty × unit price
-  const gross = (it.amount>0) ? it.amount : (it.quantity*it.unit_price);
-  // if it already includes GST (or there is no GST) use as-is; otherwise add GST on top
-  return it.amount_includes_gst ? gross : gross*(1+it.gst_percent/100);
+// The printed figure for a line: explicit billed amount if given, else qty × unit price.
+function grossFigure(it){ return (it.amount>0) ? it.amount : ((it.quantity||0)*(it.unit_price||0)); }
+// Net (taxable, GST-excluded) value of a line — strips GST if the printed figure already includes it.
+function taxableValue(it){
+  const g=grossFigure(it);
+  return it.amount_includes_gst ? g/(1+(it.gst_percent||0)/100) : g;
+}
+// GST-inclusive value of a line — adds GST on top if the printed figure is the taxable value.
+function grossInclGst(it){
+  const g=grossFigure(it);
+  return it.amount_includes_gst ? g : g*(1+(it.gst_percent||0)/100);
+}
+// Cost basis for landing: exclude GST (recoverable ITC) or include it, per the chosen mode.
+function lineCost(it,gstMode){
+  return gstMode==="exclude" ? taxableValue(it) : grossInclGst(it);
 }
 el("computeBtn").addEventListener("click",()=>{
   if(!items.length){flash("saveStatus","err","No items to calculate.");return;}
@@ -793,10 +825,12 @@ el("computeBtn").addEventListener("click",()=>{
   const method=el("method").value;
   const margin=Number(el("margin").value)||0;
   const packMethod=el("packMethod").value;
+  const gstMode=el("gstMode").value;   // "exclude" (ITC/net) or "include"
 
-  // 1) line cost incl GST + transport share across ALL lines (packing included)
-  const costs=items.map(lineCost);
+  // 1) line cost (GST excluded as ITC, or included) + transport share across ALL lines (packing included)
+  const costs=items.map(it=>lineCost(it,gstMode));
   const totalCost=costs.reduce((a,b)=>a+b,0);
+  const totalGst=items.reduce((a,it)=>a+(grossInclGst(it)-taxableValue(it)),0); // GST reclaimable as ITC
   const totalQty=items.reduce((a,b)=>a+(b.quantity||0),0);
   const n=items.length;
   const share=items.map((it,i)=>{
@@ -823,16 +857,16 @@ el("computeBtn").addEventListener("click",()=>{
   const byUid={};
   computed=prodIdx.map(i=>{
     const it=items[i], qty=it.quantity||0;
-    const lineLanded=costs[i]+share[i];                // incl GST + transport
+    const lineLanded=costs[i]+share[i];                // cost basis (ex/incl GST per mode) + transport
     const landedNoPack = qty>0 ? lineLanded/qty : 0;
     const packPU = packMethod==="perunit" ? packPerUnitGlobal : (qty>0 ? packPerLine/qty : 0);
     const landedPerUnit = landedNoPack + packPU;       // = WSP per unit
     const sellPerUnit = landedPerUnit*(1+margin/100);
-    const taxable = it.amount_includes_gst ? (qty*it.unit_price||it.amount/(1+it.gst_percent/100)) : (it.amount||qty*it.unit_price);
+    const taxable = taxableValue(it);
     const r={
       uid:it.uid, type:"Product", description:it.description, hsn:it.hsn, quantity:qty,
       unit_price:it.unit_price, gst_percent:it.gst_percent, taxable,
-      lineCost:costs[i], transportShare:share[i], packPerUnit:packPU, packTotal:packPU*qty,
+      lineCost:costs[i], lineCostInclGst:grossInclGst(it), transportShare:share[i], packPerUnit:packPU, packTotal:packPU*qty,
       totalLanded:lineLanded+packPU*qty, landedPerUnit, sellPerUnit, margin, components:""
     };
     byUid[it.uid]=r; return r;
@@ -866,15 +900,19 @@ el("computeBtn").addEventListener("click",()=>{
   }).filter(c=>c.landedPerUnit>0);
   window._incompleteCombos=incompleteCombos;
 
-  // totals strip
+  // totals strip (labels reflect whether GST is excluded as ITC or included)
+  const exGst = gstMode==="exclude";
+  const goodsLbl  = exGst ? "Goods Cost (ex-GST)"   : "Goods Cost (incl GST)";
+  const landedLbl = exGst ? "Grand Landed (ex-GST)" : "Grand Landed";
   const tr=el("totalsRow"); tr.style.display="flex";
   tr.innerHTML=`
     <div class="t">Products: <b>${computed.length}</b></div>
     <div class="t">Total Qty: <b>${prodUnits}</b></div>
-    <div class="t">Goods Cost (incl GST): <b>₹${fmt(totalCost)}</b></div>
+    <div class="t">${goodsLbl}: <b>₹${fmt(totalCost)}</b></div>
+    ${exGst&&totalGst>0?`<div class="t">GST (ITC, reclaimed): <b>₹${fmt(totalGst)}</b></div>`:""}
     <div class="t">Transport: <b>₹${fmt(transport)}</b></div>
     ${packPool>0?`<div class="t">Packing absorbed: <b>₹${fmt(packPool)}</b>${packMethod==="perunit"?` (₹${fmt(packPerUnitGlobal)}/unit)`:` (₹${fmt(packPerLine)}/line)`}</div>`:""}
-    <div class="t">Grand Landed: <b>₹${fmt(totalCost+transport)}</b></div>`;
+    <div class="t">${landedLbl}: <b>₹${fmt(totalCost+transport)}</b></div>`;
 
   // summary
   lastMargin=margin; lastIncomplete=incompleteCombos;
@@ -962,7 +1000,7 @@ el("saveBtn").addEventListener("click",async()=>{
     unit_price:round2(c.unit_price||0),
     gst_percent:c.gst_percent,
     taxable_value:round2(c.taxable||0),
-    line_cost_incl_gst:round2(c.lineCost||0),
+    line_cost_incl_gst:round2((c.lineCostInclGst!=null?c.lineCostInclGst:c.lineCost)||0),
     transport_share:round2(c.transportShare||0),
     total_landed:round2(c.totalLanded||0),
     margin_percent:c.margin,

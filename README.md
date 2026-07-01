@@ -3,9 +3,10 @@
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
 **Brand:** cyan `#00c5ff` on black, Roboto, IBI dot-grid logo, light/dark toggle.
-**Version:** `v2.8` (shown top-left). Use `v2.x` for patches, `v3` for big features.
+**Version:** `v2.9` (shown top-left). Use `v2.x` for patches, `v3` for big features.
 
 ## What's new
+- **v2.9 — GST / Input Tax Credit (ITC) mode.** Landed cost now **excludes GST by default**, treating the tax as recoverable Input Tax Credit (the correct basis for a GST-registered business) — so a bucket billed at ₹290 + 5% lands at its **net** cost, not ₹290 × 1.05. Switch to **Include GST in landed cost** (Settings → default, or per-calculation in step 3) if you don't reclaim purchase GST. The totals strip shows the **GST reclaimed (ITC)** so it reconciles against the invoice's tax. The per-row **Incl. GST?** toggle now only states whether the printed *Amount* already includes tax (so GST is stripped/added correctly), independent of the cost basis.
 - **v2.8 — Calendar date picker.** The Invoice / Purchase Date is now chosen from a calendar (no manual typing). AI-extracted dates auto-fill the picker; the sheet still stores DD-MM-YYYY.
 - **v2.7 — Delete memory items individually.** Each stored item in Local Memory has a **×** to remove just that one, in addition to **Clear All**.
 - **v2.5 — Rename individual products.** Each individual product in the results has an optional **Rename** field; the custom name is used in the summary/Sheet/ERP while the invoice description stays untouched in the items table.
@@ -58,10 +59,11 @@ Open the app → **Settings**: paste the Gemini key and the Apps Script `/exec` 
 6. **Save to Google Sheet & ERP**. Every save also stores up to **24 items** in local memory (with a **Clear All** button).
 
 ### Landed cost logic
-- Line cost is computed **including GST**, handling both invoice styles (amount already incl. GST, or amount = taxable value with GST added separately — toggle per row).
+- **GST treatment (v2.9):** the cost basis is **GST-excluded by default** — the tax is treated as recoverable **Input Tax Credit (ITC)**. Set **Include GST in landed cost** (Settings default, or per-calculation in step 3) if you do not reclaim purchase GST.
+- The per-row **Incl. GST?** toggle only states whether the printed *Amount* already includes tax, so GST is **stripped** (when excluding) or **added** (when including) correctly. It handles both invoice styles (amount already incl. GST, or amount = taxable value with GST in a separate summary).
 - Transport is apportioned across **all lines** (incl. packing) by value (default), quantity, or equally.
 - Lines marked **Packing** are not sold standalone; their full landed cost is redistributed across product units.
-- `Product WSP/unit = (line cost incl GST + transport share)/qty + packing share/unit`.
+- `Product WSP/unit = (line cost + transport share)/qty + packing share/unit`, where *line cost* = the net (ITC) value or the GST-inclusive value per the chosen mode.
 - `Combo WSP/unit = Σ component WSP/unit × units-per-combo`.
 
 ### Saved columns
