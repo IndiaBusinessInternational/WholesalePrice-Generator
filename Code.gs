@@ -57,7 +57,8 @@ function doPost(e){
       const wsp = openWsp_();
       const erp = openErp_();
       return json({status:'success', message:'IBI WSP backend online.',
-        wsp_sheet: wsp.getName(), erp_sheet: erp ? erp.getName() : '(not set)'});
+        wsp_sheet: wsp.getName(), erp_sheet: erp ? erp.getName() : '(not set)',
+        wsp_url: wsp.getUrl(), erp_url: erp ? erp.getUrl() : ''});
     }
 
     if(action === 'save'){
@@ -90,7 +91,8 @@ function doPost(e){
       }
 
       return json({status:'success', count: rows.length,
-        wsp_sheet: wsp.getName(), erp_sheet: erpName});
+        wsp_sheet: wsp.getName(), erp_sheet: erpName,
+        wsp_url: wsp.getUrl(), erp_url: erp ? erp.getUrl() : ''});
     }
 
     return json({status:'error', message:'Unknown action: ' + action});

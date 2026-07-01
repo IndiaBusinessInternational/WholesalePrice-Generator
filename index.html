@@ -210,7 +210,7 @@
 
   <!-- TOP UTILITY BAR -->
   <div class="topbar">
-    <span class="version" id="versionBadge">v2.9</span>
+    <span class="version" id="versionBadge">v2.10</span>
     <div class="toggle" id="themeToggle" title="Toggle light / dark">
       <span id="themeLabel">Dark</span>
       <span class="switch"></span>
@@ -269,11 +269,27 @@
         <input type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
         <div class="hint">Deploy the included <b>Code.gs</b> as a Web App and paste the /exec URL here.</div>
       </div>
+      <div class="field">
+        <label>Google Sheet link <span class="muted">(to view saved data — optional)</span></label>
+        <input type="url" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/XXXX/edit">
+        <div class="hint">Paste your Wholesale Price / ERP sheet link to show an <b>Open Sheet</b> button below. Or click <b>Test Sheet Connection</b> and it auto-detects the link.</div>
+      </div>
       <div class="btn-row">
         <button class="btn sm" id="saveSettings">Save Settings</button>
         <button class="btn ghost sm" id="pingBtn">Test Sheet Connection</button>
       </div>
     </details>
+  </div>
+
+  <!-- GOOGLE SHEET (view saved data) -->
+  <div class="card" id="sheetCard">
+    <h2>📊 Google Sheet — Saved Wholesale Prices</h2>
+    <p class="hint" style="margin-top:-6px">Every calculation you save is written to your Google Sheet &amp; ERP. Open or preview it here.</p>
+    <div class="btn-row" id="sheetLinks"></div>
+    <div id="sheetEmbedWrap" style="display:none;margin-top:12px">
+      <iframe id="sheetFrame" title="Google Sheet — saved wholesale prices" loading="lazy" style="width:100%;height:520px;border:1px solid var(--border);border-radius:10px;background:var(--card-2)"></iframe>
+      <p class="hint" style="margin-top:6px">Read-only preview. If it stays blank, use <b>Open ↗</b> above — inline preview needs you to be signed in to Google with view access to the sheet.</p>
+    </div>
   </div>
 
   <!-- STEP 1: SCAN -->
@@ -414,7 +430,7 @@
 
   <footer>
     India Business International &middot; iINTELLIGENCEi &middot; eCommerce for the World<br>
-    IBI Wholesale Price Generator <span id="footVer">v2.9</span>
+    IBI Wholesale Price Generator <span id="footVer">v2.10</span>
   </footer>
 </div>
 
@@ -423,14 +439,15 @@
    IBI WHOLESALE PRICE GENERATOR
    Version control:  v<major>  for big features,  v<major>.<minor>  for patches
    ============================================================ */
-const APP_VERSION = "v2.9";
+const APP_VERSION = "v2.10";
 // Pre-wired Apps Script Web App URL (editable in Settings; saved value overrides this)
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT43nU8lHpK_OE1hIfBwcc7ct9IvBgF5gA63fwlggw_Hyb9RJtf5Yf7FUVSf9bCY4w/exec";
 const MEM_LIMIT = 24;
 const LS = {
   api:"ibi_wsp_apikey", model:"ibi_wsp_model", url:"ibi_wsp_scripturl",
   method:"ibi_wsp_method", theme:"ibi_wsp_theme", mem:"ibi_wsp_memory",
-  gstmode:"ibi_wsp_gstmode"
+  gstmode:"ibi_wsp_gstmode",
+  sheeturl:"ibi_wsp_sheeturl", wspurl:"ibi_wsp_wspurl", erpurl:"ibi_wsp_erpurl"
 };
 
 document.getElementById("versionBadge").textContent = APP_VERSION;
@@ -472,6 +489,7 @@ el("defaultMethod").value = localStorage.getItem(LS.method)||"value";
 el("method").value   = el("defaultMethod").value;
 el("defaultGst").value = localStorage.getItem(LS.gstmode)||"exclude";
 el("gstMode").value  = el("defaultGst").value;
+el("sheetUrl").value = localStorage.getItem(LS.sheeturl)||"";
 
 el("saveSettings").addEventListener("click",()=>{
   localStorage.setItem(LS.api,el("apiKey").value.trim());
@@ -479,8 +497,10 @@ el("saveSettings").addEventListener("click",()=>{
   localStorage.setItem(LS.url,el("scriptUrl").value.trim());
   localStorage.setItem(LS.method,el("defaultMethod").value);
   localStorage.setItem(LS.gstmode,el("defaultGst").value);
+  localStorage.setItem(LS.sheeturl,el("sheetUrl").value.trim());
   el("method").value = el("defaultMethod").value;
   el("gstMode").value = el("defaultGst").value;
+  renderSheetLinks();
   flash("extractStatus","ok","Settings saved on this device.");
 });
 
@@ -1022,6 +1042,7 @@ el("saveBtn").addEventListener("click",async()=>{
   try{
     const resp=await fetch(url,{method:"POST",body:JSON.stringify({action:"save",rows})});
     const out=await resp.json();
+    cacheSheetUrls(out);
     if(out.status==="success") flash("saveStatus","ok",`Saved ${out.count||rows.length} item(s) to the Sheet &amp; ERP Wholesale Price section.`);
     else throw new Error(out.message||"Unknown response");
   }catch(err){
@@ -1084,9 +1105,67 @@ el("pingBtn").addEventListener("click",async()=>{
   try{
     const resp=await fetch(url,{method:"POST",body:JSON.stringify({action:"ping"})});
     const out=await resp.json();
-    flash("extractStatus","ok","Connected ✓ "+(out.message||"")+" Sheet: "+(out.sheet||""));
+    cacheSheetUrls(out);
+    const names=[out.wsp_sheet&&("WSP: "+out.wsp_sheet), out.erp_sheet&&("ERP: "+out.erp_sheet)].filter(Boolean).join(" · ");
+    flash("extractStatus","ok","Connected ✓ "+(out.message||"")+(names?(" — "+names):"")+(out.wsp_url||out.erp_url?" · sheet link ready below.":""));
   }catch(err){flash("extractStatus","err","Connection failed: "+err.message);}
 });
+
+/* ============================================================
+   GOOGLE SHEET — view saved data (links + inline preview)
+   ============================================================ */
+function sheetIdFrom(u){ const m=String(u||"").match(/\/d\/([a-zA-Z0-9\-_]+)/); return m?m[1]:""; }
+function previewUrl(u){ const id=sheetIdFrom(u); return id?("https://docs.google.com/spreadsheets/d/"+id+"/preview"):String(u||""); }
+function knownSheetUrls(){
+  return {
+    manual:(localStorage.getItem(LS.sheeturl)||"").trim(),
+    wsp:(localStorage.getItem(LS.wspurl)||"").trim(),
+    erp:(localStorage.getItem(LS.erpurl)||"").trim()
+  };
+}
+function cacheSheetUrls(out){
+  if(!out) return;
+  if(out.wsp_url) localStorage.setItem(LS.wspurl,out.wsp_url);
+  if(out.erp_url) localStorage.setItem(LS.erpurl,out.erp_url);
+  if(out.wsp_url||out.erp_url) renderSheetLinks();
+}
+function renderSheetLinks(){
+  const {manual,wsp,erp}=knownSheetUrls();
+  const box=el("sheetLinks"); if(!box) return;
+  const btns=[];
+  if(manual) btns.push(`<a class="btn" href="${esc(manual)}" target="_blank" rel="noopener">📊 Open Google Sheet ↗</a>`);
+  if(wsp && wsp!==manual) btns.push(`<a class="btn${manual?" ghost":""}" href="${esc(wsp)}" target="_blank" rel="noopener">📊 Open Wholesale Sheet ↗</a>`);
+  if(erp && erp!==manual && erp!==wsp) btns.push(`<a class="btn ghost" href="${esc(erp)}" target="_blank" rel="noopener">Open ERP Sheet ↗</a>`);
+  if(!btns.length){
+    box.innerHTML='<span class="hint" style="margin:0">No sheet link yet — paste your Google Sheet link in ⚙️ Settings above, or click <b>Test Sheet Connection</b> to detect it automatically.</span>';
+    const w=el("sheetEmbedWrap"); if(w){ w.style.display="none"; el("sheetFrame").src="about:blank"; }
+    return;
+  }
+  btns.push(`<button class="btn ghost sm" id="toggleEmbed">⤢ Show inline</button>`);
+  box.innerHTML=btns.join("");
+}
+el("sheetLinks").addEventListener("click",e=>{
+  if(e.target.id!=="toggleEmbed") return;
+  const wrap=el("sheetEmbedWrap"); const {manual,wsp,erp}=knownSheetUrls();
+  if(wrap.style.display==="none"){
+    el("sheetFrame").src=previewUrl(manual||wsp||erp);
+    wrap.style.display="block"; e.target.textContent="⤢ Hide inline";
+  }else{
+    wrap.style.display="none"; el("sheetFrame").src="about:blank"; e.target.textContent="⤢ Show inline";
+  }
+});
+renderSheetLinks();
+// Auto-detect the sheet link once per session if none is known yet (needs the updated Code.gs deployed).
+(function autoDiscoverSheet(){
+  const {manual,wsp,erp}=knownSheetUrls();
+  if(manual||wsp||erp) return;
+  if(sessionStorage.getItem("ibi_wsp_autoping")) return;
+  const url=(el("scriptUrl").value.trim()||localStorage.getItem(LS.url)||DEFAULT_SCRIPT_URL||"").trim();
+  if(!url) return;
+  sessionStorage.setItem("ibi_wsp_autoping","1");
+  fetch(url,{method:"POST",body:JSON.stringify({action:"ping"})})
+    .then(r=>r.json()).then(cacheSheetUrls).catch(()=>{});
+})();
 </script>
 </body>
 </html>

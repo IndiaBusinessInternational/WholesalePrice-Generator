@@ -3,9 +3,10 @@
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
 **Brand:** cyan `#00c5ff` on black, Roboto, IBI dot-grid logo, light/dark toggle.
-**Version:** `v2.9` (shown top-left). Use `v2.x` for patches, `v3` for big features.
+**Version:** `v2.10` (shown top-left). Use `v2.x` for patches, `v3` for big features.
 
 ## What's new
+- **v2.10 — View the Google Sheet in-app.** A new **📊 Google Sheet** card shows **Open Wholesale Sheet** / **Open ERP Sheet** buttons and an optional inline read-only preview. The link auto-detects from **Test Sheet Connection** (the backend now returns the sheet URLs), or paste it manually under Settings → *Google Sheet link*. Auto-detect needs the updated `Code.gs` redeployed; the manual link works immediately.
 - **v2.9 — GST / Input Tax Credit (ITC) mode.** Landed cost now **excludes GST by default**, treating the tax as recoverable Input Tax Credit (the correct basis for a GST-registered business) — so a bucket billed at ₹290 + 5% lands at its **net** cost, not ₹290 × 1.05. Switch to **Include GST in landed cost** (Settings → default, or per-calculation in step 3) if you don't reclaim purchase GST. The totals strip shows the **GST reclaimed (ITC)** so it reconciles against the invoice's tax. The per-row **Incl. GST?** toggle now only states whether the printed *Amount* already includes tax (so GST is stripped/added correctly), independent of the cost basis.
 - **v2.8 — Calendar date picker.** The Invoice / Purchase Date is now chosen from a calendar (no manual typing). AI-extracted dates auto-fill the picker; the sheet still stores DD-MM-YYYY.
 - **v2.7 — Delete memory items individually.** Each stored item in Local Memory has a **×** to remove just that one, in addition to **Clear All**.
