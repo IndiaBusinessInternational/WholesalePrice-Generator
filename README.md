@@ -1,4 +1,4 @@
-# IBI Wholesale Price Generator
+# IBI Wholesale Price Generator v2.12
 
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 

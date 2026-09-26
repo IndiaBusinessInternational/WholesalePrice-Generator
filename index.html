@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- IBI-PWA-KIT: installable app (manifest + icons + service worker) -->
+<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="IBI Wholesale">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>IBI Wholesale Price Generator</title>
 <!-- Open Graph / social sharing -->
@@ -224,7 +233,7 @@
 
   <!-- TOP UTILITY BAR -->
   <div class="topbar">
-    <span class="version" id="versionBadge">v2.11</span>
+    <span class="version" id="versionBadge">v2.12</span>
     <div class="toggle" id="themeToggle" title="Toggle light / dark">
       <span id="themeLabel">Dark</span>
       <span class="switch"></span>
@@ -444,7 +453,7 @@
 
   <footer>
     India Business International &middot; iINTELLIGENCEi &middot; eCommerce for the World<br>
-    IBI Wholesale Price Generator <span id="footVer">v2.11</span>
+    IBI Wholesale Price Generator <span id="footVer">v2.12</span>
   </footer>
 </div>
 
@@ -453,7 +462,7 @@
    IBI WHOLESALE PRICE GENERATOR
    Version control:  v<major>  for big features,  v<major>.<minor>  for patches
    ============================================================ */
-const APP_VERSION = "v2.11";
+const APP_VERSION = "v2.12";
 // Pre-wired Apps Script Web App URL (editable in Settings; saved value overrides this)
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT43nU8lHpK_OE1hIfBwcc7ct9IvBgF5gA63fwlggw_Hyb9RJtf5Yf7FUVSf9bCY4w/exec";
 const MEM_LIMIT = 24;
