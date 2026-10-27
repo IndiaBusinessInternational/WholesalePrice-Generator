@@ -230,6 +230,23 @@
     h1.app-title{font-size:18px}
     .wrap{padding:12px}
   }
+  /* v2.14 EDGE TO EDGE ON EVERY SCREEN SIZE (Founder 27 Oct 2026: "Yes, make all the apps edge to edge on laptop too").
+     No centred 1080px column and no outer gutter at any width (phones had 12px): cards are full-bleed with 10px inner
+     side padding. Wide screens put Settings beside the Google Sheet card and Step 1 beside Local Memory, while the
+     line-item table, combos and the calculation keep the full width. */
+  html,body{overflow-x:clip}
+  .wrap{max-width:none;padding:0 0 8px}
+  .topbar{padding:8px 10px 0;margin-bottom:8px}
+  .logo-banner{border-radius:0;box-shadow:none;margin-bottom:8px;padding-left:10px;padding-right:10px}
+  h1.app-title{margin:0 10px 8px}
+  .card{border-radius:0;border-left:0;border-right:0;box-shadow:none;padding:16px 10px;margin-bottom:8px;overflow-wrap:break-word}
+  button,.btn,select,input,[role="button"]{overflow-wrap:normal}
+  footer{padding-left:10px;padding-right:10px}
+  @media (min-width:1000px){
+    .wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;grid-auto-flow:row dense}
+    .wrap>.topbar,.wrap>.logo-banner,.wrap>footer,#itemsCard,#comboCard,#computeCard{grid-column:1/-1}
+    .wrap>h1.app-title{grid-column:1/-1;justify-self:start}
+  }
 </style>
 <script src="ibi-share.js" defer data-slot=".top-actions"></script>
 </head>
@@ -238,7 +255,7 @@
 
   <!-- TOP UTILITY BAR -->
   <div class="topbar">
-    <span class="version" id="versionBadge">v2.13</span>
+    <span class="version" id="versionBadge">v2.14</span>
     <div class="top-actions">
       <div class="toggle" id="themeToggle" title="Toggle light / dark">
         <span id="themeLabel">Dark</span>
@@ -460,7 +477,7 @@
 
   <footer>
     India Business International &middot; iINTELLIGENCEi &middot; eCommerce for the World<br>
-    IBI Wholesale Price Generator <span id="footVer">v2.13</span>
+    IBI Wholesale Price Generator <span id="footVer">v2.14</span>
   </footer>
 </div>
 
@@ -469,7 +486,7 @@
    IBI WHOLESALE PRICE GENERATOR
    Version control:  v<major>  for big features,  v<major>.<minor>  for patches
    ============================================================ */
-const APP_VERSION = "v2.13";
+const APP_VERSION = "v2.14";
 // Pre-wired Apps Script Web App URL (editable in Settings; saved value overrides this)
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT43nU8lHpK_OE1hIfBwcc7ct9IvBgF5gA63fwlggw_Hyb9RJtf5Yf7FUVSf9bCY4w/exec";
 const MEM_LIMIT = 24;

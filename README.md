@@ -1,4 +1,6 @@
-# IBI Wholesale Price Generator v2.13
+# IBI Wholesale Price Generator v2.14
+
+**v2.14 (27 Oct 2026)** — edge to edge on every screen size: no centred 1080 px column on laptops and no 12 px gutter on phones; full-bleed cards with 10 px inner padding; wide screens show Settings beside the Google Sheet card and Step 1 beside Local Memory.
 
 **v2.13 (27 Oct 2026)** — WhatsApp link preview fixed (absolute `og:image` → `og-banner.jpg` 1200×630 JPEG under 300 KB, `og:url`, `og:image:type`) and a **Share this app** button in the top bar (`ibi-share.js`).
 
