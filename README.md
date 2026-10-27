@@ -1,4 +1,6 @@
-# IBI Wholesale Price Generator v2.12
+# IBI Wholesale Price Generator v2.13
+
+**v2.13 (27 Oct 2026)** — WhatsApp link preview fixed (absolute `og:image` → `og-banner.jpg` 1200×630 JPEG under 300 KB, `og:url`, `og:image:type`) and a **Share this app** button in the top bar (`ibi-share.js`).
 
 A single-file web app to scan supplier tax invoices / handwritten notes, apportion transport + packing cost, and compute the **Wholesale (Landed) Price per unit** — saved to your IBI ERP Google Sheet.
 
